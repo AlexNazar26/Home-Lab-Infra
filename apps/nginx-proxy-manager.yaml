@@ -18,26 +18,31 @@ spec:
       labels:
         app: nginx-proxy-manager
     spec:
-      hostNetwork: true # Permet à NPM d'écouter directement sur les ports 80/443/81 du Pi
+      hostNetwork: true
       containers:
         - name: nginx-proxy-manager
-          image: jlesage/nginx-proxy-manager:latest
+          image: jc21/nginx-proxy-manager:latest
           ports:
             - containerPort: 80
-            - containerPort: 443
             - containerPort: 81
+            - containerPort: 443
           volumeMounts:
             - name: npm-data
-              mountPath: /config
+              mountPath: /data
+            - name: npm-letsencrypt
+              mountPath: /etc/letsencrypt
       volumes:
         - name: npm-data
           persistentVolumeClaim:
-            claimName: npm-pvc
+            claimName: npm-data-pvc
+        - name: npm-letsencrypt
+          persistentVolumeClaim:
+            claimName: npm-letsencrypt-pvc
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: npm-pvc
+  name: npm-data-pvc
   namespace: npm
 spec:
   accessModes:
@@ -45,3 +50,15 @@ spec:
   resources:
     requests:
       storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: npm-letsencrypt-pvc
+  namespace: npm
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

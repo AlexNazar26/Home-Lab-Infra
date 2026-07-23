@@ -179,7 +179,7 @@ spec:
             - name: NEXTCLOUD_ADMIN_PASSWORD
               value: "AdminNextcloud2026!"
             - name: NEXTCLOUD_TRUSTED_DOMAINS
-              value: "nc.alexissergent.fr"
+              value: "nc.alexissergent.fr 192.168.1.10"
           ports:
             - containerPort: 80
           volumeMounts:
@@ -190,15 +190,18 @@ spec:
           persistentVolumeClaim:
             claimName: nextcloud-data-pvc
 ---
+# --- Service Nextcloud (Exposé sur NodePort 30080 pour NPM) ---
 apiVersion: v1
 kind: Service
 metadata:
   name: nextcloud
   namespace: nextcloud
 spec:
+  type: NodePort
   ports:
     - port: 80
       targetPort: 80
+      nodePort: 30080
   selector:
     app: nextcloud
 ---

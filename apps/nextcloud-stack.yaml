@@ -182,7 +182,6 @@ spec:
               value: "nc.alexissergent.fr 192.168.1.10"
           ports:
             - containerPort: 80
-              hostPort: 30080
           volumeMounts:
             - name: nextcloud-storage
               mountPath: /var/www/html/data
@@ -191,18 +190,18 @@ spec:
           persistentVolumeClaim:
             claimName: nextcloud-data-pvc
 ---
-# --- Service Nextcloud (Exposé sur NodePort 30080 pour NPM) ---
+# --- Service Nextcloud via K3s LoadBalancer ---
 apiVersion: v1
 kind: Service
 metadata:
   name: nextcloud
   namespace: nextcloud
 spec:
-  type: NodePort
+  type: LoadBalancer
   ports:
-    - port: 8088
+    - name: http
+      port: 8088
       targetPort: 80
-      nodePort: 30080
   selector:
     app: nextcloud
 ---
@@ -228,4 +227,4 @@ spec:
               service:
                 name: nextcloud
                 port:
-                  number: 80
+                  number: 8088

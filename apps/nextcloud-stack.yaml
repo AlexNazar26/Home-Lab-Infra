@@ -182,6 +182,7 @@ spec:
               value: "nc.alexissergent.fr 192.168.1.10"
           ports:
             - containerPort: 80
+              hostPort: 30080
           volumeMounts:
             - name: nextcloud-storage
               mountPath: /var/www/html/data

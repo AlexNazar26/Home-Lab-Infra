@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://prometheus-community.github.io/helm-charts'
+    chart: kube-prometheus-stack
+    targetRevision: '68.0.0'
+    helm:
+      values: |
+        grafana:
+          adminPassword: "admin" # À changer lors de la première connexion
+          service:
+            type: NodePort
+            nodePort: 30000
+          persistence:
+            enabled: true
+            size: 2Gi
+        prometheus:
+          prometheusSpec:
+            retention: 7d # Garde 7 jours d'historique pour ne pas saturer le stockage
+            resources:
+              requests:
+                memory: 300Mi
+              limits:
+                memory: 600Mi
+        alertmanager:
+          enabled: false # Désactivé pour économiser de la RAM sur le Pi 4
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

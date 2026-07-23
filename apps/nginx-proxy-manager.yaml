@@ -10,6 +10,8 @@ metadata:
   namespace: npm
 spec:
   replicas: 1
+  strategy:
+    type: Recreate # <--- Dit à K8s de couper l'ancien pod AVANT de lancer le nouveau
   selector:
     matchLabels:
       app: nginx-proxy-manager
@@ -31,6 +33,12 @@ spec:
               mountPath: /data
             - name: npm-letsencrypt
               mountPath: /etc/letsencrypt
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
       volumes:
         - name: npm-data
           persistentVolumeClaim:

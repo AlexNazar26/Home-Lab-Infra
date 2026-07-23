@@ -15,11 +15,9 @@ spec:
           enabled: true
           prometheusSpec:
             retention: 7d
-            storageSpec:
-              emptyDir:
-                medium: ""
             resources:
               requests:
+                cpu: 100m
                 memory: 300Mi
               limits:
                 memory: 600Mi
@@ -34,11 +32,6 @@ spec:
             size: 2Gi
         alertmanager:
           enabled: false
-        kubelet:
-          enabled: true
-          serviceMonitor:
-            https: true
-            insecureSkipVerify: true
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: monitoring

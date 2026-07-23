@@ -15,9 +15,6 @@ spec:
           enabled: true
           prometheusSpec:
             retention: 7d
-            kubeletService:
-              enabled: true
-              insecureSkipVerify: true
             storageSpec:
               emptyDir:
                 medium: ""
@@ -37,6 +34,11 @@ spec:
             size: 2Gi
         alertmanager:
           enabled: false
+        kubelet:
+          enabled: true
+          serviceMonitor:
+            https: true
+            insecureSkipVerify: true
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: monitoring
@@ -46,4 +48,5 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true # Permet d'appliquer les CRDs Prometheus sans dépasser la taille limite
+      - ServerSideApply=true
+      - Replace=true

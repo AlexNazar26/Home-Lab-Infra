@@ -1,0 +1,227 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nextcloud
+---
+# --- Persistent Volume sur le disque /dev/sda (Hôte) ---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sda-nextcloud-pv
+spec:
+  capacity:
+    storage: 90Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-sda
+  hostPath:
+    path: "/mnt/sda_data/nextcloud-data"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nextcloud-data-pvc
+  namespace: nextcloud
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-sda
+  resources:
+    requests:
+      storage: 90Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sda-postgres-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-sda
+  hostPath:
+    path: "/mnt/sda_data/postgres-data"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data-pvc
+  namespace: nextcloud
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-sda
+  resources:
+    requests:
+      storage: 10Gi
+---
+# --- Base de données PostgreSQL ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: nextcloud
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          env:
+            - name: POSTGRES_DB
+              value: nextcloud
+            - name: POSTGRES_USER
+              value: nextcloud
+            - name: POSTGRES_PASSWORD
+              value: "NextcloudPostgresSecretPass123!"
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: nextcloud
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: postgres
+---
+# --- Serveur de Documents ONLYOFFICE ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: onlyoffice
+  namespace: nextcloud
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: onlyoffice
+  template:
+    metadata:
+      labels:
+        app: onlyoffice
+    spec:
+      containers:
+        - name: onlyoffice
+          image: onlyoffice/documentserver:latest
+          env:
+            - name: JWT_SECRET
+              value: "OnlyOfficeSecretJWTKey2026"
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              memory: 1536Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: onlyoffice
+  namespace: nextcloud
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: onlyoffice
+---
+# --- Nextcloud Application ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nextcloud
+  namespace: nextcloud
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nextcloud
+  template:
+    metadata:
+      labels:
+        app: nextcloud
+    spec:
+      containers:
+        - name: nextcloud
+          image: nextcloud:stable-apache
+          env:
+            - name: POSTGRES_HOST
+              value: postgres
+            - name: POSTGRES_DB
+              value: nextcloud
+            - name: POSTGRES_USER
+              value: nextcloud
+            - name: POSTGRES_PASSWORD
+              value: "NextcloudPostgresSecretPass123!"
+            - name: NEXTCLOUD_ADMIN_USER
+              value: "admin"
+            - name: NEXTCLOUD_ADMIN_PASSWORD
+              value: "AdminNextcloud2026!"
+            - name: NEXTCLOUD_TRUSTED_DOMAINS
+              value: "nc.alexissergent.fr"
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nextcloud-storage
+              mountPath: /var/www/html/data
+      volumes:
+        - name: nextcloud-storage
+          persistentVolumeClaim:
+            claimName: nextcloud-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nextcloud
+  namespace: nextcloud
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: nextcloud
+---
+# --- Ingress Nginx ---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nextcloud-ingress
+  namespace: nextcloud
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10G"
+    nginx.ingress.kubernetes.io/server-snippet: |
+      client_max_body_size 10G;
+spec:
+  rules:
+    - host: nc.alexissergent.fr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nextcloud
+                port:
+                  number: 80

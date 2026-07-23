@@ -11,24 +11,32 @@ spec:
     targetRevision: '68.0.0'
     helm:
       values: |
+        prometheus:
+          enabled: true
+          prometheusSpec:
+            retention: 7d
+            kubeletService:
+              enabled: true
+              insecureSkipVerify: true
+            storageSpec:
+              emptyDir:
+                medium: ""
+            resources:
+              requests:
+                memory: 300Mi
+              limits:
+                memory: 600Mi
         grafana:
-          adminPassword: "admin" # À changer lors de la première connexion
+          enabled: true
+          adminPassword: "admin"
           service:
             type: NodePort
             nodePort: 30000
           persistence:
             enabled: true
             size: 2Gi
-        prometheus:
-          prometheusSpec:
-            retention: 7d # Garde 7 jours d'historique pour ne pas saturer le stockage
-            resources:
-              requests:
-                memory: 300Mi
-              limits:
-                memory: 600Mi
         alertmanager:
-          enabled: false # Désactivé pour économiser de la RAM sur le Pi 4
+          enabled: false
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: monitoring
@@ -38,3 +46,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true # Permet d'appliquer les CRDs Prometheus sans dépasser la taille limite
